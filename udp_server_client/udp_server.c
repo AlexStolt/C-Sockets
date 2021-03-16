@@ -10,13 +10,25 @@
 #include <netdb.h>
 
 #define PORT "8080"
+#define MAXDATALEN 32
+
+
+
+void *address(struct sockaddr *sa){
+  if(sa->sa_family == AF_INET6){
+    return &((struct sockaddr_in6 *) sa)->sin6_addr;
+  }
+  return &((struct sockaddr_in *) sa)->sin_addr;
+}
+
 
 int main(int argc, char const *argv[]){
   struct addrinfo hints, *server_info, *current;
-  char ip_addr[INET6_ADDRSTRLEN];
-  int sockfd;
+  char ip_addr[INET6_ADDRSTRLEN], buffer[MAXDATALEN];
+  int sockfd, bytes;
+  struct sockaddr_storage client;
+  socklen_t addr_len;
   
-
   //Set Server Hints
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_INET6;  //Use IPv6
@@ -50,8 +62,18 @@ int main(int argc, char const *argv[]){
   //Free server_info List Since Bind was Successful
   freeaddrinfo(server_info);
 
+  //Listen For Incoming Connections
+  addr_len = sizeof(client);
+  if((bytes = recvfrom(sockfd, buffer, MAXDATALEN - 1, 0, (struct sockaddr *) &client,  &addr_len) == -1)){
+    return -1;
+  }
+
+  //Display Client Address
+  inet_ntop(client.ss_family, address((struct sockaddr *) &client), ip_addr, INET6_ADDRSTRLEN);
+  printf("Client: %s Sent %s\n", ip_addr, buffer);
 
 
+  close(sockfd);
 
   return 0;
 }
